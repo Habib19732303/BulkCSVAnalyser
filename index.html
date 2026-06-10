@@ -75,6 +75,17 @@ html,body{height:100%;font-family:var(--font);background:var(--surface);color:va
 .topbar-title{font-size:18px;font-weight:800;color:var(--ink)}
 .topbar-right{display:flex;gap:8px;align-items:center}
 .content{padding:24px 28px;flex:1}
+/* ── SORT BAR ── */
+.sort-bar{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-bottom:2px solid rgba(255,255,255,.08);padding:10px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:57px;z-index:40;box-shadow:0 2px 12px rgba(10,22,40,.18)}
+.sort-bar-label{font-size:11px;font-weight:800;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;white-space:nowrap}
+.sort-bar select{padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;font-family:var(--font);border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;outline:none;min-width:130px}
+.sort-bar select option{background:#1a1a2e;color:#fff}
+.sort-bar-toggle{display:flex;align-items:center;gap:7px;cursor:pointer;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.15);border-radius:8px;padding:5px 12px;color:rgba(255,255,255,.55);font-size:12px;font-weight:700;transition:all .2s;user-select:none;white-space:nowrap}
+.sort-bar-toggle:hover{background:rgba(255,255,255,.12);color:#fff}
+.sort-bar-toggle.on{background:linear-gradient(135deg,rgba(0,168,120,.25),rgba(0,212,160,.15));border-color:rgba(0,212,160,.5);color:#00d4a0;box-shadow:0 0 12px rgba(0,212,160,.2)}
+.sort-bar-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:all .2s}
+.sort-bar-toggle.on .sort-bar-dot{background:#00d4a0;box-shadow:0 0 6px #00d4a0}
+.sort-bar-hint{font-size:11px;color:rgba(255,255,255,.3);margin-left:4px}
 /* ── CARDS ── */
 .card{background:#fff;border:1px solid var(--surface3);border-radius:var(--r2);padding:22px 24px;box-shadow:var(--shadow)}
 .card+.card{margin-top:16px}
@@ -1079,6 +1090,23 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <button class="btn btn-ghost btn-sm" onclick="resetAll()" title="Reset all data">↺ Reset</button>
     <button class="btn btn-ghost btn-sm" onclick="window.print()" title="Print this page">🖨</button>
   </div>
+</div>
+
+<!-- ══ SORT BAR ══ -->
+<div class="sort-bar" id="sortBar">
+  <span class="sort-bar-label">↕ Sort before download</span>
+  <select id="sbCol"><option value="">— choose column —</option></select>
+  <select id="sbDir">
+    <option value="asc">A → Z (ascending)</option>
+    <option value="desc">Z → A (descending)</option>
+    <option value="num-asc">0 → 9 (numeric asc)</option>
+    <option value="num-desc">9 → 0 (numeric desc)</option>
+  </select>
+  <div class="sort-bar-toggle" id="sbToggle" onclick="sbToggle()">
+    <div class="sort-bar-dot" id="sbDot"></div>
+    <span id="sbToggleLbl">OFF — click to enable</span>
+  </div>
+  <span class="sort-bar-hint" id="sbHint"></span>
 </div>
 
 <div class="content">
@@ -2799,7 +2827,43 @@ function toCSV(rows,headers){
   return BOM+[headers.map(csvEsc).join(','),...rows.map(r=>headers.map(h=>csvEsc(r[h])).join(','))].join('\r\n');
 }
 function dlBlob(content,fn,mime){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:mime}));a.download=fn;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
-function dlCSV(rows,headers,fn){if(!rows||!rows.length){toast('No data to download','amber');return}dlBlob(toCSV(rows,headers),fn,'text/csv;charset=utf-8;')}
+// ── Sort-before-download ──
+let _sbEnabled=false;
+function sbToggle(){
+  _sbEnabled=!_sbEnabled;
+  const t=document.getElementById('sbToggle');
+  const l=document.getElementById('sbToggleLbl');
+  const h=document.getElementById('sbHint');
+  t.classList.toggle('on',_sbEnabled);
+  l.textContent=_sbEnabled?'ON — all downloads sorted':'OFF — click to enable';
+  h.textContent=_sbEnabled?'Every download will be sorted by the selected column':'';
+}
+function sbPopulate(headers){
+  const sel=document.getElementById('sbCol');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— choose column —</option>'+headers.map(h=>`<option value="${H(h)}"${h===cur?' selected':''}>${H(h)}</option>`).join('');
+}
+function sbApply(rows,headers){
+  const col=document.getElementById('sbCol').value;
+  const dir=document.getElementById('sbDir').value;
+  if(!col||!headers.includes(col))return rows;
+  return [...rows].sort((a,b)=>{
+    const av=a[col]??'',bv=b[col]??'';
+    if(dir==='num-asc'||dir==='num-desc'){
+      const an=parseFloat(av),bn=parseFloat(bv);
+      const na=isNaN(an),nb=isNaN(bn);
+      if(na&&nb)return 0;if(na)return 1;if(nb)return -1;
+      return dir==='num-asc'?an-bn:bn-an;
+    }
+    const cmp=String(av).localeCompare(String(bv),undefined,{sensitivity:'base',numeric:true});
+    return dir==='asc'?cmp:-cmp;
+  });
+}
+function dlCSV(rows,headers,fn){
+  if(!rows||!rows.length){toast('No data to download','amber');return}
+  const out=_sbEnabled?sbApply(rows,headers):rows;
+  dlBlob(toCSV(out,headers),fn,'text/csv;charset=utf-8;');
+}
 
 // ── Toast ──
 let toastTimer;
@@ -2982,6 +3046,7 @@ function setupFile(w,name,count,headers){
     <div class="file-meta-row"><span class="fml">Columns</span><span class="fmv">${headers.length}</span></div>
     <div class="file-meta-row"><span class="fml">Email column</span><span class="fmv" style="color:var(--mint)">${H(g)}</span></div>`;
   toast(`File ${w} loaded — ${count.toLocaleString()} rows`,'green');
+  if(w==='A') sbPopulate(headers);
 }
 function resetFile(w){
   S[w]={raw:[],headers:[],file:null};
@@ -4003,6 +4068,7 @@ function initTransform(){
   showPage('trEmpty',!hasA);showPage('trContent',hasA);
   if(!hasA)return;
   fillSelect('sortCol',S.A.headers);
+  sbPopulate(S.A.headers);
   fillSelect('calcSrc',S.A.headers);
 }
 function updateCalcUI(){
