@@ -5697,6 +5697,7 @@ function cbBuild(){
 
   document.getElementById('cbPreviewWrap').style.display='';
   document.getElementById('cbPreviewEmpty').style.display='none';
+  sbPopulate(cbBuiltHeaders);
   toast('Built '+cbBuiltRows.length.toLocaleString()+' rows × '+cbBuiltHeaders.length+' columns','green');
 }
 
