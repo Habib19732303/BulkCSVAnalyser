@@ -1069,6 +1069,7 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <button style="display:none" data-page="author" onclick="nav(this)"></button>
     <button style="display:none" data-page="help" onclick="nav(this)"></button>
     <button style="display:none" data-page="settings" onclick="nav(this)"></button>
+    <button style="display:none" data-page="csvbuilder" onclick="nav(this)"></button>
     <span style="display:none" id="nb-upload"></span>
 
   </nav>
@@ -1312,6 +1313,11 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <div class="ac-icon">📈</div>
     <div class="ac-title">Stats &amp; Audit</div>
     <div class="ac-sub">Column stats, value frequencies</div>
+  </div>
+  <div class="action-card" onclick="nav(document.querySelector('[data-page=csvbuilder]'))">
+    <div class="ac-icon">🏗️</div>
+    <div class="ac-title">CSV Builder</div>
+    <div class="ac-sub">Create a CSV from scratch — define columns, auto-fill &amp; type data</div>
   </div>
 </div>
 
@@ -1792,6 +1798,62 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
 </div>
 
 </div><!-- /content — CSV Tools pages follow -->
+
+<!-- ══ PAGE: CSV BUILDER ══ -->
+<div id="page-csvbuilder" class="page" style="display:none">
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><span>🏗️</span>CSV Builder — Create from scratch</div>
+  <p style="font-size:12px;color:var(--ink3);margin-bottom:0">Define your columns, set auto-fill rules, then type or paste your data rows. Download a complete CSV when ready.</p>
+</div>
+
+<!-- Step 1: Define columns -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><span>1️⃣</span>Define columns</div>
+  <div id="cbColList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-ghost btn-sm" onclick="cbAddCol()">＋ Add column</button>
+    <button class="btn btn-ghost btn-sm" onclick="cbImportHeaders()">📋 Import headers from File A</button>
+    <button class="btn btn-ghost btn-sm" onclick="cbClearCols()">✕ Clear all</button>
+  </div>
+</div>
+
+<!-- Step 2: Enter data -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><span>2️⃣</span>Enter data rows</div>
+  <p style="font-size:12px;color:var(--ink3);margin-bottom:8px">Type or paste your data — one row per line. Values separated by commas or tabs. Auto-filled columns are added automatically — don't include them here.</p>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+    <label style="font-size:11px;font-weight:700;color:var(--ink3)">Separator:</label>
+    <select id="cbSep" style="padding:5px 10px;border:1px solid var(--surface3);border-radius:var(--r);font-size:12px;font-family:var(--font)">
+      <option value="comma">Comma ( , )</option>
+      <option value="tab">Tab</option>
+      <option value="semi">Semicolon ( ; )</option>
+      <option value="pipe">Pipe ( | )</option>
+    </select>
+    <span id="cbManualColHint" style="font-size:11px;color:var(--ink3)"></span>
+  </div>
+  <textarea id="cbDataInput" style="width:100%;height:180px;font-family:var(--mono);font-size:12px;padding:10px;border:1.5px solid var(--surface3);border-radius:var(--r);resize:vertical;line-height:1.6" placeholder="John Smith,john@company.com&#10;Jane Doe,jane@dept.org&#10;Bob Jones,bob@company.com" oninput="cbUpdateHint()"></textarea>
+</div>
+
+<!-- Step 3: Preview -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><span>3️⃣</span>Preview &amp; download</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <button class="btn btn-primary btn-sm" onclick="cbBuild()">⚡ Build preview</button>
+    <button class="btn btn-success btn-sm" onclick="cbDownload()">⬇ Download CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="cbReset()">↺ Reset all</button>
+  </div>
+  <div id="cbPreviewWrap" style="display:none">
+    <div id="cbKpi" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"></div>
+    <div style="overflow-x:auto;border-radius:var(--r);border:1px solid var(--surface3)">
+      <table class="tbl" id="cbPreviewTable"><thead></thead><tbody></tbody></table>
+    </div>
+    <p style="font-size:11px;color:var(--ink3);margin-top:8px">Showing first 20 rows. Download for full data.</p>
+  </div>
+  <div id="cbPreviewEmpty" style="padding:20px;text-align:center;color:var(--ink3);font-size:13px">Click <strong>Build preview</strong> to see your CSV</div>
+</div>
+
+</div><!-- /page-csvbuilder -->
 
 <!-- ══ PAGE: DATA CLEANER ══ -->
 <div id="page-cleaner" class="page" style="display:none">
@@ -2922,7 +2984,8 @@ function nav(btn){
     help:           [null,'Help'],
     settings:       [null,'Settings — Trusted Domains'],
     about:          [null,'About Tool'],
-    author:         [null,'About Author']
+    author:         [null,'About Author'],
+    csvbuilder:     ['Section 1','CSV Builder']
   };
   const secEl=document.getElementById('topbarSection');
   const pgEl=document.getElementById('topbarPage');
@@ -2937,7 +3000,7 @@ function nav(btn){
   }
 
   // Show back button only when on a sub-page accessed from the dashboard
-  const backPages = new Set(['paste','dashboard','domains','split','splitnum','cleaner','emailgen','compare','filter']);
+  const backPages = new Set(['paste','dashboard','domains','split','splitnum','cleaner','emailgen','compare','filter','csvbuilder']);
   const backBtn = document.getElementById('topbarBack');
   if(backBtn) backBtn.style.display = backPages.has(pg) ? '' : 'none';
 
@@ -5452,6 +5515,205 @@ function updateBadges(){
     nb.textContent=c.missing.length||'✓';
     nb.className='sb-badge '+(c.missing.length?'red':'green');
   }
+}
+
+// ══════════════════════════════════════════════════
+// CSV BUILDER
+// ══════════════════════════════════════════════════
+let cbCols = [];      // [{name, fill, fillVal, fillSeqPfx, fillSeqStart, fillSeqPad}]
+let cbBuiltRows = []; // final built rows
+let cbBuiltHeaders = [];
+
+const CB_FILL_TYPES = {
+  none:     'Manual entry',
+  rownum:   'Row number (1, 2, 3…)',
+  date:     "Today's date",
+  fixed:    'Fixed value',
+  seq:      'Sequence (e.g. EMP001, EMP002…)'
+};
+
+function cbAddCol(name='', fill='none', fillVal='', fillSeqPfx='', fillSeqStart=1, fillSeqPad=3){
+  const id = Date.now() + Math.random();
+  cbCols.push({id, name, fill, fillVal, fillSeqPfx, fillSeqStart: parseInt(fillSeqStart)||1, fillSeqPad: parseInt(fillSeqPad)||3});
+  cbRenderCols();
+  cbUpdateHint();
+}
+
+function cbRemoveCol(id){
+  cbCols = cbCols.filter(c=>c.id!==id);
+  cbRenderCols();
+  cbUpdateHint();
+}
+
+function cbMoveCol(id, dir){
+  const i = cbCols.findIndex(c=>c.id===id);
+  if(i<0) return;
+  const j = i+dir;
+  if(j<0||j>=cbCols.length) return;
+  [cbCols[i],cbCols[j]]=[cbCols[j],cbCols[i]];
+  cbRenderCols();
+}
+
+function cbReadCols(){
+  cbCols.forEach(col=>{
+    const el = document.getElementById('cbc-'+col.id);
+    if(!el) return;
+    col.name        = el.querySelector('.cb-col-name').value.trim();
+    col.fill        = el.querySelector('.cb-col-fill').value;
+    col.fillVal     = el.querySelector('.cb-col-fixval')?.value||'';
+    col.fillSeqPfx  = el.querySelector('.cb-col-seqpfx')?.value||'';
+    col.fillSeqStart= parseInt(el.querySelector('.cb-col-seqstart')?.value)||1;
+    col.fillSeqPad  = parseInt(el.querySelector('.cb-col-seqpad')?.value)||3;
+  });
+}
+
+function cbRenderCols(){
+  const wrap = document.getElementById('cbColList');
+  if(!cbCols.length){
+    wrap.innerHTML='<p style="font-size:12px;color:var(--ink3)">No columns defined yet. Click <strong>Add column</strong> to start.</p>';
+    return;
+  }
+  wrap.innerHTML = cbCols.map((col,i)=>`
+  <div id="cbc-${col.id}" style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;background:var(--surface);border:1px solid var(--surface3);border-radius:var(--r);padding:10px 12px">
+    <div style="display:flex;align-items:center;gap:4px;min-width:20px">
+      <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:10px" onclick="cbMoveCol(${col.id},-1)" ${i===0?'disabled':''}>▲</button>
+      <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:10px" onclick="cbMoveCol(${col.id},1)" ${i===cbCols.length-1?'disabled':''}>▼</button>
+    </div>
+    <div style="flex:1;min-width:140px">
+      <label style="font-size:10px;font-weight:700;color:var(--ink3);display:block;margin-bottom:3px">Column name</label>
+      <input class="cb-col-name" value="${H(col.name)}" placeholder="e.g. FirstName" style="width:100%;padding:6px 8px;border:1px solid var(--surface3);border-radius:var(--r);font-size:13px;font-family:var(--font)" oninput="cbUpdateHint()">
+    </div>
+    <div style="flex:1;min-width:170px">
+      <label style="font-size:10px;font-weight:700;color:var(--ink3);display:block;margin-bottom:3px">Auto-fill</label>
+      <select class="cb-col-fill" style="width:100%;padding:6px 8px;border:1px solid var(--surface3);border-radius:var(--r);font-size:12px;font-family:var(--font)" onchange="cbToggleFillOpts(this,'${col.id}')">
+        ${Object.entries(CB_FILL_TYPES).map(([v,l])=>`<option value="${v}"${col.fill===v?' selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    <div id="cbfix-${col.id}" style="flex:1;min-width:120px;${col.fill==='fixed'?'':'display:none'}">
+      <label style="font-size:10px;font-weight:700;color:var(--ink3);display:block;margin-bottom:3px">Fixed value</label>
+      <input class="cb-col-fixval" value="${H(col.fillVal)}" placeholder="e.g. Active" style="width:100%;padding:6px 8px;border:1px solid var(--surface3);border-radius:var(--r);font-size:13px;font-family:var(--font)">
+    </div>
+    <div id="cbseq-${col.id}" style="display:flex;gap:6px;flex-wrap:wrap;${col.fill==='seq'?'':'display:none'}">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--ink3);display:block;margin-bottom:3px">Prefix</label>
+        <input class="cb-col-seqpfx" value="${H(col.fillSeqPfx)}" placeholder="EMP" style="width:70px;padding:6px 8px;border:1px solid var(--surface3);border-radius:var(--r);font-size:12px;font-family:var(--font)">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--ink3);display:block;margin-bottom:3px">Start #</label>
+        <input class="cb-col-seqstart" type="number" value="${col.fillSeqStart}" min="0" style="width:65px;padding:6px 8px;border:1px solid var(--surface3);border-radius:var(--r);font-size:12px;font-family:var(--font)">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--ink3);display:block;margin-bottom:3px">Pad digits</label>
+        <input class="cb-col-seqpad" type="number" value="${col.fillSeqPad}" min="1" max="8" style="width:65px;padding:6px 8px;border:1px solid var(--surface3);border-radius:var(--r);font-size:12px;font-family:var(--font)">
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red);margin-top:20px" onclick="cbRemoveCol(${col.id})">✕</button>
+  </div>`).join('');
+}
+
+function cbToggleFillOpts(sel, id){
+  document.getElementById('cbfix-'+id).style.display = sel.value==='fixed' ? '' : 'none';
+  document.getElementById('cbseq-'+id).style.display  = sel.value==='seq'   ? '' : 'none';
+  cbUpdateHint();
+}
+
+function cbUpdateHint(){
+  cbReadCols();
+  const manualCols = cbCols.filter(c=>c.fill==='none'&&c.name).map(c=>c.name);
+  const hint = document.getElementById('cbManualColHint');
+  if(hint) hint.textContent = manualCols.length
+    ? 'Manual columns (in order): ' + manualCols.join(' → ')
+    : cbCols.length ? 'All columns are auto-filled — no data rows needed' : '';
+}
+
+function cbImportHeaders(){
+  if(!S.A.headers||!S.A.headers.length){toast('Upload File A first','amber');return;}
+  cbCols = [];
+  S.A.headers.forEach(h=>cbAddCol(h,'none'));
+  cbRenderCols();
+  cbUpdateHint();
+  toast('Imported '+S.A.headers.length+' columns from File A','green');
+}
+
+function cbClearCols(){
+  cbCols=[];cbRenderCols();cbUpdateHint();
+}
+
+function cbGetSep(){
+  const v=document.getElementById('cbSep').value;
+  return v==='tab'?'\t':v==='semi'?';':v==='pipe'?'|':',';
+}
+
+function cbBuild(){
+  cbReadCols();
+  const validCols = cbCols.filter(c=>c.name);
+  if(!validCols.length){toast('Add at least one column first','amber');return;}
+
+  const sep = cbGetSep();
+  const raw = document.getElementById('cbDataInput').value;
+  const manualCols = validCols.filter(c=>c.fill==='none');
+
+  // Parse text rows
+  const textRows = raw.trim() ? raw.trim().split('\n').map(line=>{
+    const vals = line.split(sep).map(v=>v.trim());
+    const obj={};
+    manualCols.forEach((col,i)=>{ obj[col.name]=vals[i]??''; });
+    return obj;
+  }) : (manualCols.length ? [] : [{_auto:true}]);
+
+  const today = new Date().toLocaleDateString('en-GB');
+  const totalRows = textRows.length || 1;
+
+  cbBuiltRows = Array.from({length: Math.max(textRows.length,1)}, (_,i)=>{
+    const row = textRows[i]||{};
+    const out = {};
+    validCols.forEach(col=>{
+      if(col.fill==='none')          out[col.name] = row[col.name]??'';
+      else if(col.fill==='rownum')   out[col.name] = String(i+1);
+      else if(col.fill==='date')     out[col.name] = today;
+      else if(col.fill==='fixed')    out[col.name] = col.fillVal;
+      else if(col.fill==='seq'){
+        const n = col.fillSeqStart + i;
+        out[col.name] = col.fillSeqPfx + String(n).padStart(col.fillSeqPad,'0');
+      }
+    });
+    return out;
+  });
+
+  cbBuiltHeaders = validCols.map(c=>c.name);
+
+  // Render preview
+  const preview = cbBuiltRows.slice(0,20);
+  const thead = document.querySelector('#cbPreviewTable thead');
+  const tbody = document.querySelector('#cbPreviewTable tbody');
+  thead.innerHTML = '<tr>'+cbBuiltHeaders.map(h=>`<th>${H(h)}</th>`).join('')+'</tr>';
+  tbody.innerHTML = preview.map(r=>'<tr>'+cbBuiltHeaders.map(h=>`<td>${H(r[h]??'')}</td>`).join('')+'</tr>').join('');
+
+  // KPI chips
+  document.getElementById('cbKpi').innerHTML = `
+    <div class="kpi blue" style="min-width:100px"><div class="kpi-num">${cbBuiltRows.length.toLocaleString()}</div><div class="kpi-lbl">Rows</div></div>
+    <div class="kpi green" style="min-width:100px"><div class="kpi-num">${cbBuiltHeaders.length}</div><div class="kpi-lbl">Columns</div></div>
+    <div class="kpi amber" style="min-width:100px"><div class="kpi-num">${cbCols.filter(c=>c.fill!=='none').length}</div><div class="kpi-lbl">Auto-filled</div></div>`;
+
+  document.getElementById('cbPreviewWrap').style.display='';
+  document.getElementById('cbPreviewEmpty').style.display='none';
+  toast('Built '+cbBuiltRows.length.toLocaleString()+' rows × '+cbBuiltHeaders.length+' columns','green');
+}
+
+function cbDownload(){
+  if(!cbBuiltRows.length){cbBuild();if(!cbBuiltRows.length)return;}
+  dlCSV(cbBuiltRows, cbBuiltHeaders, 'built_csv.csv');
+  toast('Downloaded built_csv.csv','green');
+}
+
+function cbReset(){
+  cbCols=[];cbBuiltRows=[];cbBuiltHeaders=[];
+  cbRenderCols();
+  document.getElementById('cbDataInput').value='';
+  document.getElementById('cbPreviewWrap').style.display='none';
+  document.getElementById('cbPreviewEmpty').style.display='';
+  cbUpdateHint();
+  toast('CSV Builder reset','amber');
 }
 </script>
 </body>
