@@ -1072,6 +1072,7 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <button style="display:none" data-page="help" onclick="nav(this)"></button>
     <button style="display:none" data-page="settings" onclick="nav(this)"></button>
     <button style="display:none" data-page="csvbuilder" onclick="nav(this)"></button>
+    <button style="display:none" data-page="structure" onclick="nav(this)"></button>
     <span style="display:none" id="nb-upload"></span>
 
   </nav>
@@ -1162,11 +1163,11 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
       <input type="file" accept=".csv" onchange="loadCSV('A',this.files[0])">
       <div class="dz-c-icon">📄</div>
       <div class="dz-c-text">Click or drag CSV here</div>
-      <div class="dz-c-sub">Any CSV with email addresses</div>
+      <div class="dz-c-sub">Any CSV file — email lists, reports, exports</div>
     </div>
     <div class="uc-loaded-info" id="infoA">
       <div class="uc-col-sel">
-        <label>Email column:</label>
+        <label>Key column:</label>
         <select id="colA" onchange="reprocess()"></select>
       </div>
       <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">
@@ -1196,7 +1197,7 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     </div>
     <div class="uc-loaded-info" id="infoB">
       <div class="uc-col-sel">
-        <label>Email column:</label>
+        <label>Key column:</label>
         <select id="colB" onchange="reprocess()"></select>
       </div>
       <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">
@@ -1243,23 +1244,23 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
 <div class="action-grid" id="actionGrid">
   <div class="action-card" onclick="nav(document.querySelector('[data-page=paste]'))">
     <div class="ac-icon">📋</div>
-    <div class="ac-title">Paste Emails</div>
-    <div class="ac-sub">Paste a list of emails to validate and analyse</div>
+    <div class="ac-title">Paste List</div>
+    <div class="ac-sub">Paste a list of values, emails or names to analyse</div>
   </div>
   <div class="action-card" onclick="nav(document.querySelector('[data-page=dashboard]'))">
     <div class="ac-icon">📊</div>
     <div class="ac-title">Dashboard &amp; Charts</div>
-    <div class="ac-sub">Visual breakdown of emails, domains and stats</div>
+    <div class="ac-sub">Visual breakdown of data, values and stats</div>
   </div>
   <div class="action-card" onclick="nav(document.querySelector('[data-page=domains]'))">
     <div class="ac-icon">🌐</div>
     <div class="ac-title">Domain Breakdown</div>
-    <div class="ac-sub">@primary domain vs non-primary split, invalid &amp; duplicate emails</div>
+    <div class="ac-sub">Domain split, invalid &amp; duplicate detection (email CSVs)</div>
   </div>
   <div class="action-card" onclick="nav(document.querySelector('[data-page=cleaner]'))">
     <div class="ac-icon">🧹</div>
     <div class="ac-title">Clean &amp; Prepare List</div>
-    <div class="ac-sub">Remove blanks, duplicates, invalid emails</div>
+    <div class="ac-sub">Remove blanks, duplicates, invalid entries</div>
   </div>
   <div class="action-card" onclick="nav(document.querySelector('[data-page=split]'))">
     <div class="ac-icon">✂️</div>
@@ -1320,6 +1321,11 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <div class="ac-icon">🏗️</div>
     <div class="ac-title">CSV Builder</div>
     <div class="ac-sub">Create a CSV from scratch — define columns, auto-fill &amp; type data</div>
+  </div>
+  <div class="action-card" onclick="nav(document.querySelector('[data-page=structure]'))">
+    <div class="ac-icon">🔬</div>
+    <div class="ac-title">File Structure</div>
+    <div class="ac-sub">Column types, nulls, unique counts &amp; sample values for any CSV</div>
   </div>
 </div>
 
@@ -1800,6 +1806,23 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
 </div>
 
 </div><!-- /content — CSV Tools pages follow -->
+
+<!-- ══ PAGE: FILE STRUCTURE ══ -->
+<div id="page-structure" class="page" style="display:none">
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><span>🔬</span>File Structure — Column Analysis</div>
+  <p style="font-size:12px;color:var(--ink3);margin-bottom:12px">Analyses every column in your CSV — detected type, fill rate, unique values and sample data. Works with any CSV.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-primary btn-sm" onclick="buildStructure()">⚡ Analyse File A</button>
+    <button class="btn btn-ghost btn-sm" onclick="buildStructureB()">Analyse File B</button>
+  </div>
+</div>
+<div id="structureEmpty" class="card"><div class="empty"><div class="empty-icon">🔬</div><p>Upload a CSV file first, then click Analyse</p></div></div>
+<div id="structureOut" style="display:none">
+  <div id="structureKpi" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"></div>
+  <div id="structureCols"></div>
+</div>
+</div>
 
 <!-- ══ PAGE: CSV BUILDER ══ -->
 <div id="page-csvbuilder" class="page" style="display:none">
@@ -2987,7 +3010,8 @@ function nav(btn){
     settings:       [null,'Settings — Trusted Domains'],
     about:          [null,'About Tool'],
     author:         [null,'About Author'],
-    csvbuilder:     ['Section 1','CSV Builder']
+    csvbuilder:     ['Section 1','CSV Builder'],
+    structure:      ['Section 1','File Structure']
   };
   const secEl=document.getElementById('topbarSection');
   const pgEl=document.getElementById('topbarPage');
@@ -3002,7 +3026,7 @@ function nav(btn){
   }
 
   // Show back button only when on a sub-page accessed from the dashboard
-  const backPages = new Set(['paste','dashboard','domains','split','splitnum','cleaner','emailgen','compare','filter','csvbuilder']);
+  const backPages = new Set(['paste','dashboard','domains','split','splitnum','cleaner','emailgen','compare','filter','csvbuilder','structure']);
   const backBtn = document.getElementById('topbarBack');
   if(backBtn) backBtn.style.display = backPages.has(pg) ? '' : 'none';
 
@@ -3109,9 +3133,34 @@ function setupFile(w,name,count,headers){
     <div class="file-meta-row"><span class="fml">File</span><span class="fmv">${H(name)}</span></div>
     <div class="file-meta-row"><span class="fml">Rows</span><span class="fmv">${count.toLocaleString()}</span></div>
     <div class="file-meta-row"><span class="fml">Columns</span><span class="fmv">${headers.length}</span></div>
-    <div class="file-meta-row"><span class="fml">Email column</span><span class="fmv" style="color:var(--mint)">${H(g)}</span></div>`;
+    <div class="file-meta-row"><span class="fml">Key column</span><span class="fmv" style="color:var(--mint)">${H(g)}</span></div>`;
   toast(`File ${w} loaded — ${count.toLocaleString()} rows`,'green');
-  if(w==='A') sbPopulate(headers);
+  if(w==='A'){
+    sbPopulate(headers);
+    // Detect if CSV has an email column — show/hide email-only tools
+    const hasEmail = headers.some(h=>/email|mail|upn|userprincipal/i.test(h))
+      || (S.A.raw.slice(0,10).some(r=>Object.values(r).some(v=>typeof v==='string'&&/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()))));
+    S.A.hasEmail = hasEmail;
+    cbUpdateEmailTools();
+    structureAutoNav();
+  }
+}
+
+function cbUpdateEmailTools(){
+  const show = S.A.hasEmail !== false;
+  // Domain Breakdown card (4th card, index 3) and Email Generator card (7th, index 6)
+  const cards = document.querySelectorAll('#actionGrid .action-card');
+  // card index 2 = Domain Breakdown, index 6 = Email Generator
+  const emailOnlyIdxs = [2,6];
+  emailOnlyIdxs.forEach(i=>{
+    if(cards[i]) cards[i].style.opacity = show ? '' : '0.35';
+    if(cards[i]) cards[i].title = show ? '' : 'Upload a CSV with an email column to use this tool';
+  });
+}
+
+function structureAutoNav(){
+  // Auto-populate File Structure when File A is loaded
+  if(typeof buildStructure === 'function') buildStructure();
 }
 function resetFile(w){
   S[w]={raw:[],headers:[],file:null};
@@ -5520,7 +5569,80 @@ function updateBadges(){
 }
 
 // ══════════════════════════════════════════════════
-// CSV BUILDER
+// FILE STRUCTURE
+// ══════════════════════════════════════════════════
+function buildStructure(src){ runStructure(src||'A'); }
+function buildStructureB(){ runStructure('B'); }
+
+function runStructure(w){
+  const file = S[w];
+  if(!file||!file.raw.length){ toast('Upload File '+(w||'A')+' first','amber'); return; }
+  const{headers,raw}=file;
+  const total=raw.length;
+
+  // Analyse each column
+  const cols = headers.map(h=>{
+    const vals = raw.map(r=>r[h]);
+    const blanks = vals.filter(v=>v===null||v===undefined||String(v).trim()==='').length;
+    const filled = total - blanks;
+    const fillPct = total ? Math.round(filled/total*100) : 0;
+    const nonBlank = vals.filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='').map(v=>String(v).trim());
+    const unique = new Set(nonBlank).size;
+    const samples = [...new Set(nonBlank)].slice(0,5);
+
+    // Detect type
+    let type='text';
+    if(nonBlank.length){
+      if(nonBlank.every(v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v))) type='email';
+      else if(nonBlank.every(v=>!isNaN(Number(v.replace(/,/g,''))))) type='number';
+      else if(nonBlank.every(v=>/^\d{1,4}[-\/]\d{1,2}[-\/]\d{1,4}$|^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(v))) type='date';
+      else if(nonBlank.every(v=>/^(true|false|yes|no|y|n|1|0)$/i.test(v))) type='boolean';
+      else if(unique<=10&&unique/total<0.2) type='category';
+    }
+    return{h,total,filled,blanks,fillPct,unique,samples,type};
+  });
+
+  // KPI bar
+  const typeIcon={email:'📧',number:'🔢',date:'📅',boolean:'☑️',category:'🏷️',text:'📝'};
+  const typeCounts={};
+  cols.forEach(c=>{ typeCounts[c.type]=(typeCounts[c.type]||0)+1; });
+
+  document.getElementById('structureKpi').innerHTML=`
+    <div class="kpi blue" style="min-width:90px"><div class="kpi-num">${total.toLocaleString()}</div><div class="kpi-lbl">Rows</div></div>
+    <div class="kpi green" style="min-width:90px"><div class="kpi-num">${headers.length}</div><div class="kpi-lbl">Columns</div></div>
+    <div class="kpi amber" style="min-width:90px"><div class="kpi-num">${cols.filter(c=>c.fillPct<100).length}</div><div class="kpi-lbl">Has blanks</div></div>
+    ${Object.entries(typeCounts).map(([t,n])=>`<div class="kpi grey" style="min-width:90px"><div class="kpi-num">${n}</div><div class="kpi-lbl">${typeIcon[t]||'📝'} ${t}</div></div>`).join('')}`;
+
+  // Column cards
+  const typeColour={email:'#1a6fe8',number:'#00a878',date:'#e07b00',boolean:'#9b27af',category:'#d4450f',text:'#4a6fa5'};
+  document.getElementById('structureCols').innerHTML=`
+  <div style="overflow-x:auto;border-radius:var(--r2);border:1px solid var(--surface3)">
+  <table class="tbl">
+    <thead><tr>
+      <th>#</th><th>Column</th><th>Type</th><th>Fill rate</th><th>Filled</th><th>Blanks</th><th>Unique</th><th>Sample values</th>
+    </tr></thead>
+    <tbody>${cols.map((c,i)=>`<tr>
+      <td style="color:var(--ink3);font-size:11px">${i+1}</td>
+      <td><strong>${H(c.h)}</strong></td>
+      <td><span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:${typeColour[c.type]}22;color:${typeColour[c.type]};border:1px solid ${typeColour[c.type]}55">${typeIcon[c.type]||'📝'} ${c.type}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;height:6px;background:var(--surface3);border-radius:3px;min-width:60px"><div style="height:6px;border-radius:3px;background:${c.fillPct===100?'var(--mint)':c.fillPct>80?'var(--amber)':'var(--red)'};width:${c.fillPct}%"></div></div>
+          <span style="font-size:11px;font-weight:700;color:${c.fillPct===100?'var(--mint)':c.fillPct>80?'var(--amber)':'var(--red)'}">${c.fillPct}%</span>
+        </div>
+      </td>
+      <td>${c.filled.toLocaleString()}</td>
+      <td style="color:${c.blanks?'var(--red)':'var(--mint)'}">${c.blanks.toLocaleString()}</td>
+      <td>${c.unique.toLocaleString()}</td>
+      <td style="font-size:11px;color:var(--ink3);max-width:220px">${c.samples.map(s=>`<span style="display:inline-block;background:var(--surface2);border-radius:4px;padding:1px 5px;margin:1px;font-family:var(--mono)">${H(s)}</span>`).join('')}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+
+  document.getElementById('structureEmpty').style.display='none';
+  document.getElementById('structureOut').style.display='';
+  toast('Structure analysed — '+headers.length+' columns','green');
+}
 // ══════════════════════════════════════════════════
 let cbCols = [];      // [{name, fill, fillVal, fillSeqPfx, fillSeqStart, fillSeqPad}]
 let cbBuiltRows = []; // final built rows
