@@ -968,6 +968,7 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
 @keyframes cbPulse{0%,100%{box-shadow:0 6px 24px rgba(238,9,121,.55)}50%{box-shadow:0 8px 32px rgba(123,47,247,.75),0 0 20px rgba(255,106,0,.4)}}
 .action-card:nth-child(17){background:linear-gradient(145deg,#0a3d62,#1e88e5);box-shadow:0 6px 20px rgba(30,136,229,.5)}
 .action-card:nth-child(18){background:linear-gradient(145deg,#1b5e20,#00c853);box-shadow:0 6px 20px rgba(0,200,83,.5)}
+.action-card:nth-child(19){background:linear-gradient(145deg,#4a0080,#c2185b);box-shadow:0 6px 20px rgba(194,24,91,.5)}
 .ac-icon{font-size:26px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));position:relative;z-index:1}
 .ac-title{font-size:12px;font-weight:800;color:#fff;line-height:1.3;position:relative;z-index:1;text-shadow:0 1px 3px rgba(0,0,0,.25)}
 .ac-sub{font-size:11px;color:rgba(255,255,255,.75);line-height:1.35;position:relative;z-index:1}
@@ -1076,6 +1077,7 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <button style="display:none" data-page="csvbuilder" onclick="nav(this)"></button>
     <button style="display:none" data-page="structure" onclick="nav(this)"></button>
     <button style="display:none" data-page="rowpicker" onclick="nav(this)"></button>
+    <button style="display:none" data-page="colextract" onclick="nav(this)"></button>
     <span style="display:none" id="nb-upload"></span>
 
   </nav>
@@ -1334,6 +1336,11 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
     <div class="ac-icon">☑️</div>
     <div class="ac-title">Extract Rows</div>
     <div class="ac-sub">Select specific rows from any CSV and download as a new file</div>
+  </div>
+  <div class="action-card" onclick="nav(document.querySelector('[data-page=colextract]'))">
+    <div class="ac-icon">🧲</div>
+    <div class="ac-title">Column Extractor</div>
+    <div class="ac-sub">Tick the columns you want, reorder them, download instantly</div>
   </div>
 </div>
 
@@ -1862,6 +1869,50 @@ hr.div{border:none;border-top:1px solid var(--surface3);margin:20px 0}
 </div>
 
 </div><!-- /page-rowpicker -->
+
+<!-- ══ PAGE: COLUMN EXTRACTOR ══ -->
+<div id="page-colextract" class="page" style="display:none">
+
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title"><span>🧲</span>Column Extractor</div>
+  <p style="font-size:12px;color:var(--ink3);margin-bottom:12px">Tick the columns you want to keep, drag to reorder, then download as a new CSV. Quick and simple.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-primary btn-sm" onclick="ceLoad('A')">Load File A</button>
+    <button class="btn btn-ghost btn-sm" onclick="ceLoad('B')">Load File B</button>
+    <span id="ceFileLabel" style="font-size:11px;color:var(--ink3)"></span>
+  </div>
+</div>
+
+<div id="ceEmpty" class="card"><div class="empty"><div class="empty-icon">🧲</div><p>Load a file above to start</p></div></div>
+
+<div id="ceMain" style="display:none">
+
+  <!-- Controls -->
+  <div class="card" style="margin-bottom:12px;padding:14px 16px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <button class="btn btn-ghost btn-sm" onclick="ceSelectAll()">✔ All</button>
+      <button class="btn btn-ghost btn-sm" onclick="ceSelectNone()">✕ None</button>
+      <button class="btn btn-ghost btn-sm" onclick="ceInvert()">⇄ Invert</button>
+      <span id="ceSelCount" style="font-size:12px;font-weight:700;color:var(--sky);margin-left:4px"></span>
+      <button class="btn btn-success btn-sm" onclick="ceDownload()" style="margin-left:auto">⬇ Download extracted CSV</button>
+    </div>
+    <p style="font-size:11px;color:var(--ink3);margin-bottom:10px">Tick columns to include · Drag ≡ to reorder</p>
+    <div id="ceColList" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+
+  <!-- Preview -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--surface3);display:flex;align-items:center;gap:10px">
+      <span style="font-size:11px;font-weight:800;color:var(--sky);text-transform:uppercase;letter-spacing:.6px">Preview</span>
+      <span id="cePreviewNote" style="font-size:11px;color:var(--ink3)"></span>
+    </div>
+    <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+      <table class="tbl" id="cePreviewTable"><thead></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+</div>
+</div><!-- /page-colextract -->
 
 <!-- ══ PAGE: FILE STRUCTURE ══ -->
 <div id="page-structure" class="page" style="display:none">
@@ -3068,7 +3119,8 @@ function nav(btn){
     author:         [null,'About Author'],
     csvbuilder:     ['Section 1','CSV Builder'],
     structure:      ['Section 1','File Structure'],
-    rowpicker:      ['Section 1','Extract Rows']
+    rowpicker:      ['Section 1','Extract Rows'],
+    colextract:     ['Section 1','Column Extractor']
   };
   const secEl=document.getElementById('topbarSection');
   const pgEl=document.getElementById('topbarPage');
@@ -3083,7 +3135,7 @@ function nav(btn){
   }
 
   // Show back button only when on a sub-page accessed from the dashboard
-  const backPages = new Set(['paste','dashboard','domains','split','splitnum','cleaner','emailgen','compare','filter','csvbuilder','structure','rowpicker']);
+  const backPages = new Set(['paste','dashboard','domains','split','splitnum','cleaner','emailgen','compare','filter','csvbuilder','structure','rowpicker','colextract']);
   const backBtn = document.getElementById('topbarBack');
   if(backBtn) backBtn.style.display = backPages.has(pg) ? '' : 'none';
 
@@ -5628,6 +5680,82 @@ function updateBadges(){
     nb.textContent=c.missing.length||'✓';
     nb.className='sb-badge '+(c.missing.length?'red':'green');
   }
+}
+
+// ══════════════════════════════════════════════════
+// COLUMN EXTRACTOR
+// ══════════════════════════════════════════════════
+let ceRows=[], ceHeaders=[], ceCols=[];   // ceCols = [{name, checked}]
+let ceDragSrc=null;
+
+function ceLoad(w){
+  const file=S[w];
+  if(!file||!file.raw.length){toast('Upload File '+(w||'A')+' first','amber');return;}
+  ceRows=file.raw; ceHeaders=file.headers;
+  ceCols=ceHeaders.map(h=>({name:h,checked:true}));
+  document.getElementById('ceFileLabel').textContent='Loaded: '+file.file.name+' ('+ceRows.length.toLocaleString()+' rows, '+ceHeaders.length+' cols)';
+  document.getElementById('ceEmpty').style.display='none';
+  document.getElementById('ceMain').style.display='';
+  ceRender();
+}
+
+function ceRender(){
+  // Column checklist with drag handles
+  document.getElementById('ceColList').innerHTML=ceCols.map((c,i)=>`
+    <div class="ce-col-row" draggable="true" data-idx="${i}"
+      ondragstart="ceDragStart(event,${i})" ondragover="ceDragOver(event)" ondrop="ceDrop(event,${i})" ondragend="ceDragEnd()"
+      style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${c.checked?'rgba(20,82,170,.06)':'var(--surface)'};border:1.5px solid ${c.checked?'rgba(20,82,170,.2)':'var(--surface3)'};border-radius:var(--r);cursor:default;transition:all .15s">
+      <span style="cursor:grab;color:var(--ink3);font-size:16px;line-height:1" title="Drag to reorder">≡</span>
+      <input type="checkbox" ${c.checked?'checked':''} onchange="ceToggle(${i},this.checked)" style="width:15px;height:15px;cursor:pointer">
+      <span style="font-size:13px;font-weight:${c.checked?'600':'400'};color:${c.checked?'var(--ink)':'var(--ink3)'};flex:1;font-family:var(--mono)">${H(c.name)}</span>
+      <span style="font-size:10px;color:var(--ink3)">#${i+1}</span>
+    </div>`).join('');
+  ceUpdateCount();
+  cePreview();
+}
+
+function ceToggle(i,checked){ ceCols[i].checked=checked; ceRender(); }
+function ceSelectAll(){ ceCols.forEach(c=>c.checked=true); ceRender(); }
+function ceSelectNone(){ ceCols.forEach(c=>c.checked=false); ceRender(); }
+function ceInvert(){ ceCols.forEach(c=>c.checked=!c.checked); ceRender(); }
+
+function ceUpdateCount(){
+  const n=ceCols.filter(c=>c.checked).length;
+  document.getElementById('ceSelCount').textContent=n+' of '+ceCols.length+' columns selected';
+}
+
+// Drag-to-reorder
+function ceDragStart(e,i){ ceDragSrc=i; e.dataTransfer.effectAllowed='move'; e.currentTarget.style.opacity='.4'; }
+function ceDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; }
+function ceDrop(e,i){
+  e.preventDefault();
+  if(ceDragSrc===null||ceDragSrc===i) return;
+  const moved=ceCols.splice(ceDragSrc,1)[0];
+  ceCols.splice(i,0,moved);
+  ceDragSrc=null;
+  ceRender();
+}
+function ceDragEnd(){ ceDragSrc=null; ceRender(); }
+
+function cePreview(){
+  const sel=ceCols.filter(c=>c.checked).map(c=>c.name);
+  const preview=ceRows.slice(0,10);
+  document.getElementById('cePreviewNote').textContent='First 10 rows · '+sel.length+' columns selected';
+  const thead=document.querySelector('#cePreviewTable thead');
+  const tbody=document.querySelector('#cePreviewTable tbody');
+  if(!sel.length){
+    thead.innerHTML=''; tbody.innerHTML='<tr><td style="padding:16px;color:var(--ink3)">No columns selected</td></tr>'; return;
+  }
+  thead.innerHTML='<tr>'+sel.map(h=>`<th>${H(h)}</th>`).join('')+'</tr>';
+  tbody.innerHTML=preview.map(r=>'<tr>'+sel.map(h=>`<td>${H(r[h]??'')}</td>`).join('')+'</tr>').join('');
+}
+
+function ceDownload(){
+  const sel=ceCols.filter(c=>c.checked).map(c=>c.name);
+  if(!sel.length){toast('Select at least one column','amber');return;}
+  const rows=ceRows.map(r=>{ const o={}; sel.forEach(h=>o[h]=r[h]??''); return o; });
+  dlCSV(rows,sel,'extracted_columns.csv');
+  toast('Downloaded '+rows.length.toLocaleString()+' rows × '+sel.length+' columns','green');
 }
 
 // ══════════════════════════════════════════════════
